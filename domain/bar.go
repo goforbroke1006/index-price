@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type BarType string
 
@@ -11,7 +14,7 @@ const (
 
 type BarTimeSeriesBuffer interface {
 	Add(timestamp int64, value float64)
-	Avg() float64
+	Get() BarItem
 }
 
 func TruncateWithBarType(barType BarType, timestamp int64) int64 {
@@ -34,5 +37,5 @@ type BarItem struct {
 }
 
 type GenerateBarService interface {
-	GetBarItemStream(ticker Ticker, barType BarType) (chan BarItem, error)
+	GetBarItemStream(ctx context.Context, ticker Ticker, barType BarType) (chan BarItem, error)
 }

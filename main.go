@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"index-price/domain"
+	"index-price/external/price_stream"
 	"index-price/internal/service"
 	"index-price/pkg"
 )
@@ -12,11 +13,13 @@ import (
 func main() {
 	epCtx := pkg.NewSignalContext(context.Background())
 
-	stream1 := &fakeStream{}
-	stream2 := &fakeStream{}
-	subscribers := []domain.PriceStreamSubscriber{stream1, stream2}
-	svc := service.NewGenBarService(epCtx, subscribers, nil)
-	barsStream, err := svc.GetBarItemStream(domain.BTCUSDTicker, domain.BarType1Minute)
+	subscriptionOne := price_stream.NewFakeOne()
+	subscriptionTwo := price_stream.NewFakeTwo()
+	subscribers := []domain.PriceStreamSubscriber{subscriptionOne, subscriptionTwo}
+
+	svc := service.NewGenBarService(subscribers)
+
+	barsStream, err := svc.GetBarItemStream(epCtx, domain.BTCUSDTicker, domain.BarType1Minute)
 	if err != nil {
 		panic(err)
 	}
@@ -29,13 +32,4 @@ func main() {
 	}()
 
 	pkg.WaitForShutdown(epCtx)
-}
-
-type fakeStream struct{}
-
-var _ domain.PriceStreamSubscriber = (*fakeStream)(nil)
-
-func (f fakeStream) SubscribePriceStream(ticker domain.Ticker) (chan domain.TickerPrice, chan error) {
-	//TODO implement me
-	panic("implement me")
 }
