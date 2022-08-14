@@ -3,17 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"index-price/pkg/entrypoint"
 
 	"go.uber.org/zap"
 
 	"index-price/domain"
 	"index-price/external/price_stream"
 	"index-price/internal/service"
-	"index-price/pkg"
 )
 
 const (
-	barTypeDemo = domain.BarType15s
+	barTypeDemo = domain.BarType5s
 	//barTypeDemo = domain.BarType1m
 )
 
@@ -22,7 +22,7 @@ func main() {
 	defer func() { _ = logger.Sync() }()
 	zap.ReplaceGlobals(logger)
 
-	epCtx := pkg.NewSignalContext(context.Background())
+	epCtx := entrypoint.NewSignalContext(context.Background())
 
 	var subscribers []domain.PriceStreamSubscriber
 	for i := 0; i < 100; i++ {
@@ -43,5 +43,5 @@ func main() {
 		fmt.Println("stop streaming...")
 	}()
 
-	pkg.WaitForShutdown(epCtx)
+	entrypoint.WaitForShutdown(epCtx)
 }

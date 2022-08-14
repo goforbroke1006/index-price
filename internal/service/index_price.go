@@ -28,12 +28,12 @@ func (svc indexPriceService) GetStream(
 	var (
 		size     = len(svc.subscribers)
 		duration = domain.BarTypeToDuration(barType)
-		buffers  = make([]domain.BarTimeSeriesBuffer, size)
+		buffers  = make([]domain.TickPriceSamplesBuffer, size)
 	)
 
 	// init subscriptions
 	for idx, sub := range svc.subscribers {
-		buffers[idx] = bar.NewRoundBarTimeSeriesBuffer(duration)
+		buffers[idx] = bar.NewSamplesBuffer(duration)
 
 		go func(ctx context.Context, idx int, sub domain.PriceStreamSubscriber) {
 			tickerCh, errorsCh := sub.SubscribePriceStream(ticker)
@@ -63,11 +63,12 @@ func (svc indexPriceService) GetStream(
 			case <-ctx.Done():
 				break GenerateLoop
 
-			case <-clockTicker.C:
+			case truncatedTime := <-clockTicker.C:
+				prevInterval := truncatedTime.Add(-1 * duration).Unix()
 				sum := 0.0
 				count := 0
 				for idx := 0; idx < size; idx++ {
-					v := buffers[idx].Get()
+					v := buffers[idx].Get(prevInterval)
 					if math.IsNaN(v) {
 						continue
 					}

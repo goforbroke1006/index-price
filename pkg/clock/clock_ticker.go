@@ -14,7 +14,7 @@ func NewOnClockTicker(step time.Duration) time.Ticker {
 			waiting := time.Until(next) // next.Sub(time.Now())
 			<-time.After(waiting)
 
-			c <- time.Now()
+			c <- next
 		}
 	}()
 

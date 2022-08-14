@@ -29,9 +29,9 @@ func BarTypeToDuration(bt BarType) time.Duration {
 	return 0
 }
 
-type BarTimeSeriesBuffer interface {
+type TickPriceSamplesBuffer interface {
 	Add(timestamp int64, value float64)
-	Get() float64
+	Get(timestamp int64) float64
 }
 
 type IndexPrice struct {
