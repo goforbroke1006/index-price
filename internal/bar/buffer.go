@@ -2,68 +2,54 @@ package bar
 
 import (
 	"math"
+	"time"
 
 	"index-price/domain"
 )
 
-func NewRoundBarTimeSeriesBuffer(barType domain.BarType) *barTimeSeriesBuffer {
-	return &barTimeSeriesBuffer{barType: barType}
+func NewRoundBarTimeSeriesBuffer(interval time.Duration) *barTimeSeriesBuffer {
+	return &barTimeSeriesBuffer{
+		interval: interval,
+		lastAvg:  math.NaN(),
+	}
 }
+
+const minimumSamplesCount = 5
 
 var _ domain.BarTimeSeriesBuffer = (*barTimeSeriesBuffer)(nil)
 
 type barTimeSeriesBuffer struct {
-	barType        domain.BarType
+	interval       time.Duration
 	storage        []float64
 	lastTruncation int64
-	lastSnapshot   domain.BarItem
+	lastAvg        float64
 }
 
 func (b *barTimeSeriesBuffer) Add(timestamp int64, value float64) {
-	truncation := domain.TruncateWithBarType(b.barType, timestamp)
+	truncation := time.Unix(timestamp, 0).Truncate(b.interval).Unix()
 
 	if truncation != b.lastTruncation {
 		// closing bar period
 		b.storage = nil
 		b.lastTruncation = truncation
+		b.lastAvg = b.getAgv() // keep avg from previous interval
 	}
 
 	b.storage = append(b.storage, value)
-
-	b.lastSnapshot.Min = b.getMinPrice()
-	b.lastSnapshot.Max = b.getMaxPrice()
-	b.lastSnapshot.Open = b.getOpenPrice()
-	b.lastSnapshot.Close = b.getClosePrice()
 }
 
-func (b *barTimeSeriesBuffer) Get() domain.BarItem {
-	return b.lastSnapshot
-}
-
-func (b *barTimeSeriesBuffer) getOpenPrice() float64 {
-	return b.storage[0]
-}
-
-func (b *barTimeSeriesBuffer) getClosePrice() float64 {
-	return b.storage[len(b.storage)-1]
-}
-
-func (b *barTimeSeriesBuffer) getMinPrice() float64 {
-	min := math.MaxFloat64
-	for _, v := range b.storage {
-		if v < min {
-			min = v
-		}
+func (b *barTimeSeriesBuffer) Get() float64 {
+	if len(b.storage) < minimumSamplesCount {
+		return b.lastAvg
 	}
-	return min
+
+	return b.getAgv()
 }
 
-func (b *barTimeSeriesBuffer) getMaxPrice() float64 {
-	max := 0.0
+func (b *barTimeSeriesBuffer) getAgv() float64 {
+	avg := 0.0
 	for _, v := range b.storage {
-		if v > max {
-			max = v
-		}
+		avg += v
 	}
-	return max
+	return avg / float64(len(b.storage))
 }

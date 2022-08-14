@@ -2,118 +2,85 @@ package bar
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"index-price/domain"
 )
+
+const floatDelta = 0.001
 
 func TestRoundBarTimeSeriesBuffer_Add_Get(t *testing.T) {
 	t.Parallel()
 
+	t.Run("positive - single interval, single measurement", func(t *testing.T) {
+		t.Parallel()
+
+		buffer := barTimeSeriesBuffer{interval: 5 * time.Second}
+
+		{
+			buffer.Add(1659870315, 123.40) // Sun Aug 07 2022 11:05:15 GMT+0000
+			assert.Len(t, buffer.storage, 1)
+			assert.Equal(t, 123.40, buffer.Get())
+		}
+	})
+
+	t.Run("positive - single interval, multiple measurements", func(t *testing.T) {
+		t.Parallel()
+
+		buffer := barTimeSeriesBuffer{interval: 5 * time.Second}
+
+		{
+			buffer.Add(1659870315, 123.40) // Sun Aug 07 2022 11:05:15 GMT+0000
+			assert.Len(t, buffer.storage, 1)
+			assert.InDelta(t, 123.40, buffer.Get(), floatDelta)
+		}
+		{
+			buffer.Add(1659870316, 123.40) // Sun Aug 07 2022 11:05:15 GMT+0000
+			assert.Len(t, buffer.storage, 2)
+			assert.InDelta(t, 123.40, buffer.Get(), floatDelta)
+		}
+		{
+			buffer.Add(1659870316, 123.40) // Sun Aug 07 2022 11:05:15 GMT+0000
+			assert.Len(t, buffer.storage, 3)
+			assert.InDelta(t, 123.40, buffer.Get(), floatDelta)
+		}
+	})
+
 	t.Run("positive - add measurements inside minute, 2022-08-07 11:05:*", func(t *testing.T) {
 		t.Parallel()
 
-		buffer := barTimeSeriesBuffer{barType: domain.BarType1Minute}
+		buffer := barTimeSeriesBuffer{interval: 5 * time.Second}
 
 		{
-			buffer.Add(1659870315, 123.45)
-			item := buffer.Get()
-
-			//assert.True(t, item.Empty())
-			assert.Equal(t, 123.45, item.Open)
-			assert.Equal(t, 123.45, item.Close)
-			assert.Equal(t, 123.45, item.Max)
-			assert.Equal(t, 123.45, item.Min)
+			buffer.Add(1659870315, 123.40) // Sun Aug 07 2022 11:05:15 GMT+0000
+			assert.Len(t, buffer.storage, 1)
+			assert.InDelta(t, 123.40, buffer.Get(), floatDelta)
 		}
 
 		{
-			buffer.Add(1659870349, 122.45)
-			item := buffer.Get()
+			buffer.Add(1659870319, 123.60)
+			assert.Len(t, buffer.storage, 2)
+			assert.InDelta(t, 123.50, buffer.Get(), floatDelta)
+		}
 
-			//assert.False(t, item.Empty())
-			assert.Equal(t, 123.45, item.Open)
-			assert.Equal(t, 122.45, item.Close)
-			assert.Equal(t, 123.45, item.Max)
-			assert.Equal(t, 122.45, item.Min)
+		// next time interval
+
+		{
+			buffer.Add(1659870321, 120.72) // Sun Aug 07 2022 11:05:15 GMT+0000
+			assert.Len(t, buffer.storage, 1)
+			assert.InDelta(t, 120.72, buffer.Get(), floatDelta)
 		}
 
 		{
-			buffer.Add(1659870359, 121.45)
-			item := buffer.Get()
-
-			//assert.False(t, item.Empty())
-			assert.Equal(t, 123.45, item.Open)
-			assert.Equal(t, 121.45, item.Close)
-			assert.Equal(t, 123.45, item.Max)
-			assert.Equal(t, 121.45, item.Min)
-		}
-
-		assert.Len(t, buffer.storage, 3)
-	})
-
-	t.Run("positive - add measurements outside minute 2022-08-07 11:05:* and 2022-08-07 11:06:*", func(t *testing.T) {
-		t.Parallel()
-
-		buffer := barTimeSeriesBuffer{barType: domain.BarType1Minute}
-		{
-			buffer.Add(1659870315, 123.45) // 05
-
-			item := buffer.Get()
-			assert.Equal(t, 123.45, item.Open)
-			assert.Equal(t, 123.45, item.Close)
-			assert.Equal(t, 123.45, item.Max)
-			assert.Equal(t, 123.45, item.Min)
+			buffer.Add(1659870322, 120.42) // Sun Aug 07 2022 11:05:15 GMT+0000
+			assert.Len(t, buffer.storage, 2)
+			assert.InDelta(t, 120.57, buffer.Get(), floatDelta)
 		}
 
 		{
-			buffer.Add(1659870349, 122.45) // 05
-
-			item := buffer.Get()
-			assert.Equal(t, 123.45, item.Open)
-			assert.Equal(t, 122.45, item.Close)
-			assert.Equal(t, 123.45, item.Max)
-			assert.Equal(t, 122.45, item.Min)
+			buffer.Add(1659870324, 110.42) // Sun Aug 07 2022 11:05:15 GMT+0000
+			assert.Len(t, buffer.storage, 3)
+			assert.InDelta(t, 117.18666666666667, buffer.Get(), floatDelta)
 		}
-
-		{
-			buffer.Add(1659870360, 121.45) // 06
-
-			item := buffer.Get()
-			assert.Equal(t, 121.45, item.Open)
-			assert.Equal(t, 121.45, item.Close)
-			assert.Equal(t, 121.45, item.Max)
-			assert.Equal(t, 121.45, item.Min)
-		}
-
-		{
-			buffer.Add(1659870365, 120.45) // 06
-
-			item := buffer.Get()
-			assert.Equal(t, 121.45, item.Open)
-			assert.Equal(t, 120.45, item.Close)
-			assert.Equal(t, 121.45, item.Max)
-			assert.Equal(t, 120.45, item.Min)
-		}
-
-		assert.Len(t, buffer.storage, 2)
-	})
-
-	t.Run("positive - add measurements outside minute 2022-08-07 11:05:* and 2022-08-07 11:06:*", func(t *testing.T) {
-		t.Parallel()
-
-		buffer := barTimeSeriesBuffer{barType: domain.BarType5Minute}
-		buffer.Add(1659870315, 123.45) // 05
-		buffer.Add(1659870349, 127.45) // 05
-		buffer.Add(1659870360, 120.45) // 06
-		buffer.Add(1659870365, 125.45) // 06
-
-		item := buffer.Get()
-		assert.Equal(t, 123.45, item.Open)
-		assert.Equal(t, 125.45, item.Close)
-		assert.Equal(t, 127.45, item.Max)
-		assert.Equal(t, 120.45, item.Min)
-
-		assert.Len(t, buffer.storage, 4)
 	})
 }

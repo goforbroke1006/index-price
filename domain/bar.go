@@ -8,34 +8,37 @@ import (
 type BarType string
 
 const (
-	BarType1Minute = BarType("1m")
-	BarType5Minute = BarType("5m")
+	BarType1s  = BarType("1s")
+	BarType5s  = BarType("5s")
+	BarType15s = BarType("15s")
+	BarType1m  = BarType("1m")
 )
+
+func BarTypeToDuration(bt BarType) time.Duration {
+	switch bt {
+	case BarType1s:
+		return 1 * time.Second
+	case BarType5s:
+		return 5 * time.Second
+	case BarType15s:
+		return 15 * time.Second
+	case BarType1m:
+		return time.Minute
+	}
+
+	return 0
+}
 
 type BarTimeSeriesBuffer interface {
 	Add(timestamp int64, value float64)
-	Get() BarItem
+	Get() float64
 }
 
-func TruncateWithBarType(barType BarType, timestamp int64) int64 {
-	var duration time.Duration
-	switch barType {
-	case BarType1Minute:
-		duration = 1 * time.Minute
-	case BarType5Minute:
-		duration = 5 * time.Minute
-	}
-
-	return time.Unix(timestamp, 0).Truncate(duration).Unix()
+type IndexPrice struct {
+	Timestamp int64
+	Price     float64
 }
 
-type BarItem struct {
-	Max   float64
-	Min   float64
-	Open  float64
-	Close float64
-}
-
-type GenerateBarService interface {
-	GetBarItemStream(ctx context.Context, ticker Ticker, barType BarType) (chan BarItem, error)
+type GenerateIndexPriceService interface {
+	GetStream(ctx context.Context, ticker Ticker, barType BarType) (chan IndexPrice, error)
 }
