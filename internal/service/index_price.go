@@ -36,17 +36,21 @@ func (svc indexPriceService) GetStream(
 		buffers[idx] = bar.NewSamplesBuffer(duration)
 
 		go func(ctx context.Context, idx int, sub domain.PriceStreamSubscriber) {
-			tickerCh, errorsCh := sub.SubscribePriceStream(ticker)
-		ReadLoop:
+		SubscribeLoop:
 			for {
-				select {
-				case <-ctx.Done():
-					break ReadLoop
-				case err := <-errorsCh:
-					//zap.L().Error("can't extract price", zap.Error(err))
-					_ = err
-				case tickPrice := <-tickerCh:
-					buffers[idx].Add(tickPrice.Time.Unix(), tickPrice.Price)
+				tickerCh, errorsCh := sub.SubscribePriceStream(ticker)
+			ReadLoop:
+				for {
+					select {
+					case <-ctx.Done():
+						break SubscribeLoop
+					case err := <-errorsCh:
+						//zap.L().Error("can't extract price", zap.Error(err))
+						_ = err
+						break ReadLoop
+					case tickPrice := <-tickerCh:
+						buffers[idx].Add(tickPrice.Time.Unix(), tickPrice.Price)
+					}
 				}
 			}
 		}(ctx, idx, sub)

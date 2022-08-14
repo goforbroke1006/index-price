@@ -3,18 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"index-price/pkg/entrypoint"
 
 	"go.uber.org/zap"
 
 	"index-price/domain"
 	"index-price/external/price_stream"
 	"index-price/internal/service"
+	"index-price/pkg/entrypoint"
 )
 
 const (
-	barTypeDemo = domain.BarType5s
-	//barTypeDemo = domain.BarType1m
+	//barTypeDemo = domain.BarType5s
+	barTypeDemo = domain.BarType1m
 )
 
 func main() {
